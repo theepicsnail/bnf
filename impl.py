@@ -22,7 +22,7 @@ class NonterminalRule(Node):
       matcher = "ANY(" + ",".join(matchers) + ")"
 
     print("""
-class {NAME}(node):
+class {NAME}(Node):
   IMPL = impl.{NAME}
   @staticmethod
   def matcher():
@@ -37,13 +37,12 @@ class Rule(Node):
 
 class Matcher(Node):
   def dump(self, depth=0):
-
     head = self.match[0].dump()
 
     tail = [items[1].dump() for items in self.match[1]]
 
     if tail:
-      return "ANY({},{})".format(head, ",".join(tail))
+      return "ANY({}, {})".format(head, ", ".join(tail))
     else:
       return head
 

@@ -1,10 +1,8 @@
-#rom tokenize import TokenInfo
-#okenInfo.__repr__ = lambda x:"{}{}".format(x.string.replace("\n","\\n"), x.type)
 from grammar import Node, Parser
-from grammar import MANY, ANY, EXACTLY
+from grammar import MANY, ANY, EXACTLY, OPTIONAL, ZERO_OR_MORE
 from token import NUMBER, NAME, NEWLINE, INDENT, DEDENT, STRING
-
 import impl
+
 class Bnf(Node):
   IMPL = impl.Bnf
   @staticmethod
@@ -28,12 +26,17 @@ class Matcher(Node):
   IMPL = impl.Matcher
   @staticmethod
   def matcher():
-    return ANY(NAME, Group, STRING)
+    return Items, ZERO_OR_MORE(("|", Items))
+
+class Items(Node):
+  IMPL = impl.Items
+  @staticmethod
+  def matcher():
+    return MANY(ANY(NAME, Group, STRING))
 
 class Group(Node):
   IMPL = impl.Group
   @staticmethod
   def matcher():
-    return ("(", Matcher, ")", Optional("+"))
-
+    return ("(", Matcher, ")", OPTIONAL(ANY("+", "?", "*")))
 

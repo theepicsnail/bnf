@@ -15,11 +15,11 @@ class TokenList:
 
   def __init__(self, readline):
     self.tokens = list(tokenize.generate_tokens(readline))
-    for tok in self.tokens:
-      print("[{} {}]".format(
-        tok.type,
-        tok.string.replace("\n","")), end="\t")
-    print()
+#    for tok in self.tokens:
+#      print("[{} {}]".format(
+#        tok.type,
+#        tok.string.replace("\n","")), end="\t")
+#    print()
     self.pos = 0
     self.max_pos = len(self.tokens)
 

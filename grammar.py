@@ -15,8 +15,8 @@ class Node(object):
     return "%s(%s)" % (self.__class__.__name__, self.match)
 
 def dprint(*a):
-  import traceback
-  print("  " * len(traceback.extract_stack()), *a)
+#  import traceback
+#  print("  " * len(traceback.extract_stack()), *a)
   pass
 
 def EXACTLY(matcher):
@@ -66,7 +66,7 @@ def OPTIONAL(subtree):
     try:
       out = EXACTLY(subtree)(parser)
       return out
-    except:
+    except ParseFail:
       parser.tokens.pos = pos
     return None
   return match
@@ -95,4 +95,21 @@ def MANY(matcher):
 
       results.append(val)
   return match
+
+def ZERO_OR_MORE(matcher):
+  def match(parser):
+    dprint("ZERO_OR_MORE", matcher)
+    results = []
+    while True:
+      val =  OPTIONAL(matcher)(parser)
+
+      if val is None:
+        return results
+
+      results.append(val)
+  return match
+
+
+
+
 
