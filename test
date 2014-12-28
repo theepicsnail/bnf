@@ -1,0 +1,12 @@
+Bnf:
+  (NonterminalRule)+
+NonterminalRule:
+  NAME ":" NEWLINE INDENT (Rule)+ DEDENT
+Rule:
+  (Matcher)+ NEWLINE
+Matcher:
+  Items ("|" Items)*
+Items:
+  (NAME | STRING | Group)+
+Group:
+  "(" Matcher ")" ("?" | "+" | "*")?
