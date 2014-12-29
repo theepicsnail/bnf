@@ -1,9 +1,11 @@
 from  api import *
 
-tokens = Parser.FILE("test")
+name = "math"
+
+tokens = Parser.FILE("math")
 matcher = EXACTLY(Bnf)
 #matcher = Bnf.matcher()
-matcher(tokens).dump()
+matcher(tokens).dump(name)
 
 
 

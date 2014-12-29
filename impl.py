@@ -1,17 +1,26 @@
 from grammar import Node
 
 class Bnf(Node):
-  def dump(self, depth=0):
-    print("from grammar import Node, Parser")
-    print("from grammar import MANY, ANY, EXACTLY, OPTIONAL, ZERO_OR_MORE")
-    print("from token import NUMBER, NAME, NEWLINE, INDENT, DEDENT, STRING")
-    print("import impl")
+  def dump(self, name):
+    api = open(name + "_api.py", "w")
+    impl = open(name + "_impl.py", "w")
+
+    print("from grammar import Node, Parser", file=api)
+    print("from grammar import MANY, ANY, EXACTLY, OPTIONAL, ZERO_OR_MORE", file=api)
+    print("from token import NUMBER, NAME, NEWLINE, INDENT, DEDENT, STRING", file=api)
+    print("import {}_impl".format(name), file=api)
+
+    print("""
+class Node:
+  def __init__(self, match):
+    self.match = match
+""", file=impl)
 
     for rule in self.match:
-      rule.dump(depth+1)
+      rule.dump(api, impl)
 
 class NonterminalRule(Node):
-  def dump(self, depth=0):
+  def dump(self, api, impl):
     name = self.match[0].string
     rules = self.match[4]
 
@@ -26,17 +35,21 @@ class {NAME}(Node):
   IMPL = impl.{NAME}
   @staticmethod
   def matcher():
-    return {MATCHER}""".format(NAME=name, MATCHER=matcher))
+    return {MATCHER}""".format(NAME=name, MATCHER=matcher), file=api)
+
+    print("""
+class {NAME}(Node):
+  pass""".format(NAME=name), file=impl)
 
 class Rule(Node):
-  def dump(self, depth=0):
+  def dump(self):
     return "{}".format(
       ",".join(
         [instr.dump() for instr in self.match[0]]
       ))
 
 class Matcher(Node):
-  def dump(self, depth=0):
+  def dump(self):
     head = self.match[0].dump()
 
     tail = [items[1].dump() for items in self.match[1]]
@@ -47,7 +60,7 @@ class Matcher(Node):
       return head
 
 class Items(Node):
-  def dump(self, depth=0):
+  def dump(self):
     out = []
     for item in self.match:
       if type(item) == Group:
@@ -59,7 +72,7 @@ class Items(Node):
     return out[0]
 
 class Group(Node):
-  def dump(self, depth=0):
+  def dump(self):
     out = "{}"
     mod = self.match[3]
     if mod:
