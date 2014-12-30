@@ -23,7 +23,7 @@ class Node:
 
 class NonterminalRule(Node):
   def dump(self, api, impl):
-    name = self.match[0].string
+    name = self.match[0]
     rules = self.match[4]
 
     if len(rules) == 1:
@@ -68,7 +68,7 @@ class Items(Node):
       if type(item) == Group:
         out.append(item.dump())
       else:
-        out.append(item.string)
+        out.append(item)
     if len(out) > 1:
       return "(" + ", ".join(out) + ")"
     return out[0]
@@ -82,6 +82,6 @@ class Group(Node):
         "+":"MANY({})",
         "?":"OPTIONAL({})",
         "*":"ZERO_OR_MORE({})"
-      }[mod.string]
+      }[mod]
 
     return out.format(self.match[1].dump())
