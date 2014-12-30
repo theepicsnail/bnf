@@ -1,14 +1,16 @@
-from grammar import Node
+class Node:
+  def __init__(self, match):
+    self.match = match
 
 class Bnf(Node):
   def dump(self, name):
     api = open(name + "_api.py", "w")
     impl = open(name + "_impl.py", "w")
 
-    print("from grammar import Node, Parser", file=api)
+    print("from grammar import ParseNode, Parser", file=api)
     print("from grammar import MANY, ANY, EXACTLY, OPTIONAL, ZERO_OR_MORE", file=api)
     print("from token import NUMBER, NAME, NEWLINE, INDENT, DEDENT, STRING", file=api)
-    print("import {}_impl".format(name), file=api)
+    print("import {}_impl as impl".format(name), file=api)
 
     print("""
 class Node:
@@ -31,7 +33,7 @@ class NonterminalRule(Node):
       matcher = "ANY(" + ",".join(matchers) + ")"
 
     print("""
-class {NAME}(Node):
+class {NAME}(ParseNode):
   IMPL = impl.{NAME}
   @staticmethod
   def matcher():

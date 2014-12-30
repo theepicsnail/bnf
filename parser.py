@@ -11,7 +11,7 @@ class TokenList:
 
   @staticmethod
   def STRING(string):
-    return TokenList([b"", string.encode('utf-8')].pop)
+    return TokenList([b"", string].pop)
 
   def __init__(self, readline):
     self.tokens = list(tokenize.generate_tokens(readline))
@@ -39,9 +39,16 @@ class ParseFail(BaseException):
 
 class Parser:
   """ Provide convenient matching logic, and exception handling for parsing"""
+  NUMBER = token.NUMBER
+  NAME = token.NAME
+
   @staticmethod
   def FILE(filename):
     return Parser(TokenList.FILE(filename))
+
+  @staticmethod
+  def STRING(string):
+    return Parser(TokenList.STRING(string))
 
   def __init__(self, tokens):
     self.tokens = tokens
@@ -83,25 +90,4 @@ class Parser:
   def expect(self, tree):
     return tree.parse(self)
 
-
-class Token:
-  """ For matching arbbitrary single tokens, this class is
-  instaniated with the expected criteria. When this node parses
-  the matching token will be returned (not this Token class)
-  """
-  def __init__(self, expected_type=None, expected_string=None):
-    self.exp_type = expected_type
-    self.exp_string = expected_string
-
-  def parse(self, parser):
-    tok = parser.get()
-    if self.exp_type not in [None, tok.type]:
-      raise ParseFail()
-    if self.exp_string not in [None, tok.string]:
-      raise ParseFail()
-    return tok
-
-#OP = functools.partial(Token, token.OP) # parser.expect(OP("="))
-#NAME = Token(token.NAME) # parser.expect(NAME)
-#NUMBER = Token(token.NUMBER)
 

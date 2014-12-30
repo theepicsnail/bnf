@@ -1,6 +1,6 @@
 from  api import *
 
-name = "math"
+name = "math2"
 
 tokens = Parser.FILE("math")
 matcher = EXACTLY(Bnf)
