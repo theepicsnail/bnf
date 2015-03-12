@@ -1,6 +1,21 @@
 from lang import Rule, Matcher
 from token import NUMBER
 
+@Rule("({NAME} '=')? <Equation>")
+class Assignment:
+  def __init__(self, name, equation):
+    self.equation = equation
+    if name is not None:
+      self.name = name[0].string
+    else:
+      self.name = None
+
+  def evaluate(self, scope):
+    val = self.equation.evaluate(scope)
+    if self.name is not None:
+      scope[self.name] = val
+    return val
+
 @Rule("<Term> (('+' | '-') <Term>)*")
 class Equation:
   def __init__(self, term, tail):
@@ -63,14 +78,16 @@ tests = [
     ("x+1", 4),
     ("y*7+x", 73),
     ("z", 0),
-    ("z+x", 3)
+    ("z+x", 3),
+    ("x=10", 10),
+    ("x", 10),
 ]
 
-equationMatcher = Matcher("Equation")
+matcher = Matcher("Assignment")
 
 for (equation, answer) in tests:
   try:
-    ans = equationMatcher.matchString(equation).evaluate(scope)
+    ans = matcher.matchString(equation).evaluate(scope)
     assert ans == answer, "Equation {} evaluated to {}. But {} was expected".format(equation, ans, answer)
   except:
     assert answer is None, "Equation {} didn't parse. It should have evaluated to {}".format(equation, answer)
