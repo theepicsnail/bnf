@@ -1,80 +1,54 @@
-from grammar import ZERO_PLUS, ANY, EXACTLY
-from parser import Parser
+from lang import Rule, Matcher
 
-class Node:
-  def __init__(self, match):
-    self.match = match
+@Rule("<Term> (('+' | '-') <Term>)*")
+class Equation:
+  def __init__(self, term, tail):
+    self.term = term
+    self.tail = tail
 
-class Input(Node):
-  Pattern = lambda: (Expression, ZERO_PLUS((";", Expression)))
+  def evaluate(self):
+    val = self.term.evaluate()
+    for op, term in self.tail:
+      op = op[0].string
+      if op == '+':
+        val += term.evaluate()
+      elif op == '-':
+        val -= term.evaluate()
+    return val
 
-  def evaluate(self, scope):
-    expr, expr_list = self.match
+@Rule("<Factor> (('*' | '/') <Factor>)*")
+class Term:
+  def __init__(self, factor, tail):
+    self.factor = factor
+    self.tail = tail
 
-    ans = expr.evaluate(scope)
-    for (_,expr) in expr_list:
-      ans = expr.evaluate(scope)
+  def evaluate(self):
+    val = self.factor.evaluate()
+    for op, term in self.tail:
+      op = op[0].string
+      if op == '*':
+        val *= term.evaluate()
+      elif op == '/':
+        val /= term.evaluate()
+    return val
 
-    return ans
+@Rule("{NUMBER}")
+class Factor:
+  def __init__(self, num):
+    self.num = num
 
-class Expression(Node):
-  Pattern = lambda: (MultiExpr, ZERO_PLUS((ANY("+","-"), MultiExpr)))
+  def evaluate(self):
+    return float(self.num.string)
 
-  def evaluate(self, scope):
-    multi, multi_list = self.match
-    ans = multi.evaluate(scope)
-    for (op, expr) in multi_list:
-      tmp = expr.evaluate(scope)
-      if op == "+":
-        ans += tmp
-      elif op == "-":
-        ans -= tmp
-      else:
-        print(op)
-    return ans
 
-class MultiExpr(Node):
-  Pattern = lambda: (Atom, ZERO_PLUS((ANY("*", "/"), Atom)))
-
-  def evaluate(self, scope):
-    atom, atom_list = self.match
-    ans = atom.evaluate(scope)
-    for (op, atom) in atom_list:
-      tmp = atom.evaluate(scope)
-      if op == "*":
-        ans *= tmp
-      elif op == "/":
-        ans /= tmp
-      else:
-        print(op)
-    return ans
-
-class Atom(Node):
-  Pattern = lambda: (ANY(
-      Parser.NUMBER,
-      ("(", Expression, ")")
-  ))
-
-  def evaluate(self, scope):
-    if type(self.match) == str:
-      return float(self.match)
-    return self.match[1].evaluate(scope)
-
-"""
-Make this look like this:
-
-# initial setup
-parser = Parser(Input)
-scope = {}
-
-# main loop
-input_string = "1+1"
-tree = parser.parseString(input_string)
-print(tree.evaluate(scope))
-"""
-input_string = "1+10*2;"
-inputParser = Parser.STRING(input_string)
-tree = EXACTLY(Input)(inputParser)
-
-scope = {}
-print("{}={}".format(input_string, tree.evaluate(scope)))
+equationMatcher = Matcher("Equation")
+examples = ["0", "1+1", "2+3*4", "2*3+4", "1+", "1*", ""]
+for equ in examples:
+  print("")
+  print(">>",equ)
+  try:
+    equ_object = equationMatcher.matchString(equ)
+    result = equ_object.evaluate()
+    print("<<", result)
+  except:
+    print("<<", "Failed to parse")
