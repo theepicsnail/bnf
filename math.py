@@ -1,4 +1,5 @@
 from lang import Rule, Matcher
+from token import NUMBER
 
 @Rule("<Term> (('+' | '-') <Term>)*")
 class Equation:
@@ -6,14 +7,14 @@ class Equation:
     self.term = term
     self.tail = tail
 
-  def evaluate(self):
-    val = self.term.evaluate()
+  def evaluate(self, scope):
+    val = self.term.evaluate(scope)
     for op, term in self.tail:
       op = op[0].string
       if op == '+':
-        val += term.evaluate()
+        val += term.evaluate(scope)
       elif op == '-':
-        val -= term.evaluate()
+        val -= term.evaluate(scope)
     return val
 
 @Rule("<Factor> (('*' | '/') <Factor>)*")
@@ -22,33 +23,37 @@ class Term:
     self.factor = factor
     self.tail = tail
 
-  def evaluate(self):
-    val = self.factor.evaluate()
+  def evaluate(self, scope):
+    val = self.factor.evaluate(scope)
     for op, term in self.tail:
       op = op[0].string
       if op == '*':
-        val *= term.evaluate()
+        val *= term.evaluate(scope)
       elif op == '/':
-        val /= term.evaluate()
+        val /= term.evaluate(scope)
     return val
 
-@Rule("{NUMBER}")
+@Rule("{NUMBER} | {NAME}")
 class Factor:
-  def __init__(self, num):
-    self.num = num
+  def __init__(self, val):
+    self.val = val
 
-  def evaluate(self):
-    return float(self.num.string)
+  def evaluate(self, scope):
+    if self.val.type == NUMBER:
+      return float(self.val.string)
+    else:
+      return scope.get(self.val.string, 0)
 
 
 equationMatcher = Matcher("Equation")
-examples = ["0", "1+1", "2+3*4", "2*3+4", "1+", "1*", ""]
+examples = ["0", "1+1", "2+3*4", "2*3+4", "1+", "1*", "", "x", "x+1", "y*7+x", "z"]
+scope = {"x": 3, "y":10}
 for equ in examples:
   print("")
   print(">>",equ)
   try:
     equ_object = equationMatcher.matchString(equ)
-    result = equ_object.evaluate()
+    result = equ_object.evaluate(scope)
     print("<<", result)
   except:
     print("<<", "Failed to parse")
