@@ -45,15 +45,34 @@ class Factor:
       return scope.get(self.val.string, 0)
 
 
+# List of math expressions to input into our evaluator.
+# ( expression (str), result (float or None))
+# result is None if the expression shouldn't parse.
+scope = {
+    "x": 3,
+    "y":10}
+tests = [
+    ("0", 0),
+    ("1+1", 2),
+    ("2+3*4", 14),
+    ("2*3+4", 10),
+    ("1+", None),
+    ("1*", None),
+    ("", None),
+    ("x", 3),
+    ("x+1", 4),
+    ("y*7+x", 73),
+    ("z", 0),
+    ("z+x", 3)
+]
+
 equationMatcher = Matcher("Equation")
-examples = ["0", "1+1", "2+3*4", "2*3+4", "1+", "1*", "", "x", "x+1", "y*7+x", "z"]
-scope = {"x": 3, "y":10}
-for equ in examples:
-  print("")
-  print(">>",equ)
+
+for (equation, answer) in tests:
   try:
-    equ_object = equationMatcher.matchString(equ)
-    result = equ_object.evaluate(scope)
-    print("<<", result)
+    ans = equationMatcher.matchString(equation).evaluate(scope)
+    assert ans == answer, "Equation {} evaluated to {}. But {} was expected".format(equation, ans, answer)
   except:
-    print("<<", "Failed to parse")
+    assert answer is None, "Equation {} didn't parse. It should have evaluated to {}".format(equation, answer)
+
+print("All tests passed.")
