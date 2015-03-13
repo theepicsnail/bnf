@@ -64,7 +64,7 @@ class Factor:
     self.atom = atom
     self.tail = tail
   def evaluate(self, scope):
-    val = self.atom.evaluate(scope) 
+    val = self.atom.evaluate(scope)
     if self.tail is not None:
       val **= self.tail[1].evaluate(scope)
 

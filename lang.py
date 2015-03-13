@@ -69,7 +69,7 @@ class TokenStream:
 
 def Rule(rule, lang=DEFAULT_LANGUAGE):
   def Decorator(cls):
-    assert(type(cls) == type) # catch using 'def' instead of 'class'
+    assert(type(cls) == type) # catch using 'def' instead of 'class', also catches python2
     name = cls.__name__
     assert name not in lang, name + " already defined."
     #lang[name] = createMatcher(rule, cls)
@@ -241,10 +241,16 @@ class MatchFirst(MatcherBase):
 
 class Matcher:
   def __init__(self, reference, lang=DEFAULT_LANGUAGE):
-    self.matcher = MatchReference(reference)
+    self.matcher = MatchAll([
+      MatchReference(reference),
+      MatchType("ENDMARKER")])
     self.lang = lang
   def matchString(self, line):
     lineFactory = io.StringIO(line).readline
     tokens = TokenStream(lineFactory)
-    return self.matcher.match(self.lang, tokens)
+    return self.matcher.match(self.lang, tokens)[0]
 
+  def matchFile(self, filename):
+    lineFactory = open(filename).readline
+    tokens = TokenStream(lineFactory)
+    return self.matcher.match(self.lang, tokens)[0]
