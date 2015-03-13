@@ -175,7 +175,8 @@ class MatchString(MatcherBase):
   def match(self, lang, tokenStream):
     tok = tokenStream.expectString(self.expected)
     if tok == None:
-      raise MatchFail("Expected '{}' but got {}".format(self.expected, tokenStream.peek()))
+      tokenStream.unget()
+      raise MatchFail("Expected '{}' but got {}".format(self.expected, tok))
     return tok
 
 class MatchType(MatcherBase):
@@ -183,7 +184,8 @@ class MatchType(MatcherBase):
   def match(self, lang, tokenStream):
       tok = tokenStream.get()
       if token.tok_name[tok.type] != self.expected:
-        raise MatchFail("Expected '{}' but got {}".format(self.expected, tokenStream.peek()))
+        tokenStream.unget()
+        raise MatchFail("Expected '{}' but got {}".format(self.expected, tok))
       return tok
 
 class MatchOptional(MatcherBase):
@@ -228,12 +230,14 @@ class MatchFirst(MatcherBase):
   @Debug
   def match(self, lang, tokenStream):
     state = tokenStream.getState()
-    for option in self.expected:
-      res = option.match(lang,tokenStream)
-      if res is not None:
-        return res
-      tokenStream.setState(state)
-
+    try:
+      for option in self.expected:
+        res = option.match(lang,tokenStream)
+        if res is not None:
+          return res
+        tokenStream.setState(state)
+    except:
+      raise MatchFail("Couldn't match any of:" + ", ".join(map(str,self.expected)))
 
 class Matcher:
   def __init__(self, reference, lang=DEFAULT_LANGUAGE):
