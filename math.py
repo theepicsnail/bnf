@@ -134,5 +134,7 @@ while True:
     print("<", matcher.matchString(line).evaluate(scope))
   except:
     print("Failed to parse")
+    import traceback
+    traceback.print_exc()
 
 
