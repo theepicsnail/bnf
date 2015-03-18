@@ -9,8 +9,8 @@ factor: atom ['^' factor]
 atom: '(' equation ')' | NAME | NUMBER | '-' <atom>
 """
 
-
-@Rule("({NAME} '=')? <Equation>")
+mathLang = {}
+@Rule("({NAME} '=')? <Equation>", mathLang)
 class Assignment:
   def __init__(self, name, equation):
     self.equation = equation
@@ -25,7 +25,7 @@ class Assignment:
       scope[self.name] = val
     return val
 
-@Rule("<Term> (('+' | '-') <Term>)*")
+@Rule("<Term> (('+' | '-') <Term>)*", mathLang)
 class Equation:
   def __init__(self, term, tail):
     self.term = term
@@ -41,7 +41,7 @@ class Equation:
         val -= term.evaluate(scope)
     return val
 
-@Rule("<Factor> (('*' | '/') <Factor>)*")
+@Rule("<Factor> (('*' | '/') <Factor>)*", mathLang)
 class Term:
   def __init__(self, factor, tail):
     self.factor = factor
@@ -58,7 +58,7 @@ class Term:
     return val
 
 
-@Rule("<Atom> ( '^' <Factor> )?")
+@Rule("<Atom> ( '^' <Factor> )?", mathLang)
 class Factor:
   def __init__(self, atom, tail):
     self.atom = atom
@@ -70,7 +70,7 @@ class Factor:
 
     return val
 
-@Rule(" '(' <Equation> ')' | {NAME} | {NUMBER} | '-' <Atom>")
+@Rule(" '(' <Equation> ')' | {NAME} | {NUMBER} | '-' <Atom>", mathLang)
 class Atom:
   def __init__(self, a, b=None, c=None):
     #This is too complicated, it beeds broken apart.
@@ -111,7 +111,7 @@ tests = [
     ("x = 3^(2+4)", 729),
 ]
 
-matcher = Matcher("Assignment")
+matcher = Matcher("Assignment", mathLang)
 
 for (equation, answer) in tests:
   try:

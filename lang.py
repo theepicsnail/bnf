@@ -3,16 +3,18 @@ import tokenize, token
 
 
 import traceback
-DEBUG = False# True
+DEBUG = False
 def Debug(func):
-  if not DEBUG:
-    return func
   def debugger(*a, **b):
+    if not DEBUG:
+      return func(*a, **b)
     depth = len(traceback.extract_stack()) // 2
     indent = "| " * depth
     try:
       print(indent, ">>", func )
       for i,n in enumerate(a):
+        if type(n) == dict:
+          n = n.keys()
         print(indent, "arg", i, "=", n)
       for k,n in b.items():
         print(indent, "arg", k, "=", n)
@@ -31,10 +33,14 @@ class TokenStream:
     self.tokens = list(filter(self.acceptToken, tokenize.generate_tokens(readline)))
     self.pos = 0
   def acceptToken(self, t):
+    if DEBUG:
+      print("Accept token?", t)
     return t.type not in [
       tokenize.ENCODING,
       token.INDENT,
-      token.DEDENT
+      token.DEDENT,
+      tokenize.NL,
+      tokenize.NEWLINE
     ]
   def get(self):
     self.pos += 1
@@ -150,10 +156,17 @@ class RuleMatcher:
     self.cls = cls
   @Debug
   def match(self, lang, tokens):
-    return self.cls(*self.matcher.match(lang, tokens))
+    res = self.matcher.match(lang, tokens)
+    if DEBUG:
+      print("Rule matched:", self.cls, res)
+    return self.cls(*res)
 
   def __repr__(self):
     return "RuleMatcher({})".format(self.rule)
+
+  def compress(self, lang):
+    self.matcher = self.matcher.compress(lang)
+    return self
 
 class MatcherBase:
   def __init__(self, expected):
@@ -164,20 +177,33 @@ class MatcherBase:
   def __repr__(self):
     return str(self.__class__.__name__) + "(" + repr(self.expected) + ")"
 
+  @Debug
+  def compress(self, lang):
+    return self
+
 class MatchReference(MatcherBase):
   @Debug
   def match(self, lang, tokenStream):
+    assert self.expected in lang, "{} was refereced but not defined.".format(self.expected)
     ruleMatcher = lang[self.expected]
     return ruleMatcher.match(lang, tokenStream)
+  def __repr__(self):
+    return "<{}>".format(self.expected)
+  #Leaving as default so that stack traces keep references
+  @Debug
+  def compress(self, lang):
+    lang[self.expected] = lang[self.expected].compress(lang)
+    return self
 
 class MatchString(MatcherBase):
   @Debug
   def match(self, lang, tokenStream):
     tok = tokenStream.expectString(self.expected)
     if tok == None:
-      tokenStream.unget()
-      raise MatchFail("Expected '{}' but got {}".format(self.expected, tok))
+      raise MatchFail("Expected '{}' but got {}".format(self.expected, tokenStream.peek()))
     return tok
+  def __repr__(self):
+    return repr(self.expected)
 
 class MatchType(MatcherBase):
   @Debug
@@ -187,6 +213,8 @@ class MatchType(MatcherBase):
         tokenStream.unget()
         raise MatchFail("Expected '{}' but got {}".format(self.expected, tok))
       return tok
+  def __repr__(self):
+      return "{{{}}}".format(self.expected)
 
 class MatchOptional(MatcherBase):
   @Debug
@@ -197,26 +225,56 @@ class MatchOptional(MatcherBase):
     except MatchFail:
       tokenStream.setState(state)
       return None
+  @Debug
+  def compress(self, lang):
+    self.expected = self.expected.compress(lang)
+    if type(self.expected) == MatchOptional:
+        print("hm... optional(optional(...))")
+    return self
 
 class MatchMany(MatcherBase):
   @Debug
   def match(self, lang, tokenStream):
-    first = self.expected.match(lang, tokenStream)
-    rest = MatchList(self.expected).match(lang, tokenStream)
-    return [first] + rest
+    out = [self.expected.match(lang, tokenStream)]
+    while True:
+      state = tokenStream.getState()
+      try:
+        out.append(self.expected.match(lang, tokenStream))
+      except MatchFail:
+        tokenStream.setState(state)
+        break
+    return out
+
+  @Debug
+  def compress(self, lang):
+    self.expected = self.expected.compress(lang)
+    return self
 
 class MatchList(MatcherBase):
   @Debug
   def match(self, lang, tokenStream):
     out = []
-    matcher = MatchOptional(self.expected)
     while True:
-      val = matcher.match(lang, tokenStream)
-      if val is None:
+      state = tokenStream.getState()
+      try:
+        out.append(self.expected.match(lang, tokenStream))
+      except MatchFail:
+        tokenStream.setState(state)
         break
-      else:
-        out.append(val)
     return out
+
+  @Debug
+  def compress(self, lang):
+    self.expected = self.expected.compress(lang)
+    return self
+
+class Lister:
+  def __init__(self, matcher):
+    self.matcher = matcher
+  def match(self, lang, toks):
+    return [self.matcher.match(lang,toks)]
+  def compress(self, lang):
+    return self
 
 class MatchAll(MatcherBase):
   @Debug
@@ -226,7 +284,29 @@ class MatchAll(MatcherBase):
       out.append(matcher.match(lang, tokenStream))
     return out
 
+  @Debug
+  def compress(self, lang):
+    self.compress = lambda x:self
+    if len(self.expected) == 1:
+      return Lister(self.expected[0].compress(lang))
+    self.expected = [
+        matcher.compress(lang)
+        for matcher in self.expected
+        ]
+    return self
+
 class MatchFirst(MatcherBase):
+
+  @Debug
+  def compress(self, lang):
+    if len(self.expected) == 1:
+      return Lister(self.expected[0].compress(lang))
+    self.expected = [
+        matcher.compress(lang)
+        for matcher in self.expected
+        ]
+    return self
+
   @Debug
   def match(self, lang, tokenStream):
     state = tokenStream.getState()
@@ -236,21 +316,30 @@ class MatchFirst(MatcherBase):
         if res is not None:
           return res
         tokenStream.setState(state)
-    except:
+    except MatchFail:
       raise MatchFail("Couldn't match any of:" + ", ".join(map(str,self.expected)))
 
 class Matcher:
   def __init__(self, reference, lang=DEFAULT_LANGUAGE):
+    DEBUG = True
     self.matcher = MatchAll([
       MatchReference(reference),
-      MatchType("ENDMARKER")])
+      MatchType("ENDMARKER")])#.compress(lang)
+    DEBUG = False
     self.lang = lang
+
   def matchString(self, line):
     lineFactory = io.StringIO(line).readline
-    tokens = TokenStream(lineFactory)
-    return self.matcher.match(self.lang, tokens)[0]
+    return self.matchReadline(lineFactory)
 
   def matchFile(self, filename):
     lineFactory = open(filename).readline
-    tokens = TokenStream(lineFactory)
-    return self.matcher.match(self.lang, tokens)[0]
+    return self.matchReadline(lineFactory)
+
+  def matchReadline(self, readLine):
+    tokens = TokenStream(readLine)
+    try:
+      return self.matcher.match(self.lang, tokens)[0]
+    except MatchFail:
+      print("Couldn't match:", tokens.peek())
+      raise
